@@ -1,0 +1,16 @@
+package: github.com/spudlyo/metassh
+import:
+- package: github.com/bmizerany/perks
+  subpackages:
+  - quantile
+- package: github.com/kr/pty
+- package: github.com/ogier/pflag
+- package: github.com/vividcortex/godaemon
+- package: golang.org/x/crypto
+  subpackages:
+  - ssh
+  - ssh/agent
+  - ssh/terminal
+- package: golang.org/x/sys
+  subpackages:
+  - unix

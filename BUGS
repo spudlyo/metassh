@@ -1,0 +1,64 @@
+* The ControlMaster protocol code doesn't deal with STDIN very well.
+
+If you use the ControlMaster socket to request a shell, you end up with your
+terminal being in a non-sane state. You can run 'stty sane' or 'reset' to
+bring you to sanity.
+
+Using 'scp' with the ControlMaster will actually transfer the file, but when
+you're done you have to hit ^C in order to exit.
+
+Requesting a TTY works as you'd expect, you can do: 'ssh -t somehost top'
+and it will work.
+
+In most of these cases though, once you drop back to you shell, the first
+character you type at a prompt will get eaten by the io.Copy() code in
+controlmux.go. This is annoying. I try to make this less annoying by only
+dealing with STDIN if the user requests a shell, tries to scp, or requests
+a TTY.
+
+* GNU Readline is not thread-safe
+
+Only the first session to SSH into MetaSSH gets to experience the glory of GNU
+Readline.  Everybody else gets some off-brand readline, because all hell breaks
+loose if I try to access the C readline library from multiple goroutines.
+
+* SSH Server feature doesn't require authentication
+
+Considering this thing lets you run commands on a bunch of hosts, maybe it should
+require some authentication. Or if we want to keep it auth-less it should at the
+very least not listen on 2222 but have its own ControlMaster socket in the private
+~/.ssh area that allows you to talk to it.
+
+* Assumes single user/auth method works for all hosts
+
+MetaSSH makes the bogus assumption that every host it needs to SSH into uses
+the same auth credentials. It should read usernames and keys from the JSON
+blob, and prompt the user for each private key it may need to unlock before
+starting the server.
+
+* Connect command wrong when there are zeo targets
+
+If you say 'connect' without first having picked any targets, the command
+happily tells you that it connected to one host, when in fact it hasn't.
+
+* Quantiles can vary wildly from run to run
+
+The docs for the quantile library state:
+"Package quantile computes approximate quantiles over an unbounded data stream
+within low memory and CPU bounds. A small amount of accuracy is traded to
+achieve the above properties."
+
+I'm not sure if we're seeing that "small amount of accuracy" or if I'm just
+using the library wrong. I'm betting there is a bug here somewhere.
+
+* ControlMaster protocol implementation is half-assed
+
+1) It has a hardcoded naming scheme for the sockets.
+2) Protocol version numbers are not checked.
+3) MuxCAliveCheck should actually verify the backend is alive.
+
+* Quantiles seem very broken when concurrency is limited to 128 (agent)
+
+* The run command seemingly runs without any run arguments.
+
+* When a timeout for a run command is exceeded, it should kill the process.
