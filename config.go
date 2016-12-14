@@ -52,6 +52,7 @@ type Config struct {
 	Spool        bool   `desc:"Save remote execution output to the SpoolDir"`
 	SpoolDir     string `desc:"Specify path to save program execution output"`
 	TargetCmd    string `desc:"Specify external program to implement target functionality"`
+	Tee          bool   `desc:"Tee spooled output to stdout/stderr."`
 	TestCmd      string `desc:"Specify a test command to execute"`
 	Timeout      int    `short:"t" desc:"Number of seconds to wait for SSH connections to finish"`
 	User         string `short:"u" desc:"Specify the user to SSH in as"`
@@ -78,6 +79,7 @@ func DefaultConfig() *Config {
 		Spool:        false,
 		SpoolDir:     os.Getenv("HOME") + SpoolDir,
 		TargetCmd:    os.Getenv("HOME") + DefaultTarget,
+		Tee:          false,
 		TestCmd:      TestCommand,
 		Timeout:      SSHTimeout,
 		User:         os.Getenv("USER"),
