@@ -25,7 +25,6 @@ import (
 	"github.com/bmizerany/perks/quantile"
 	"github.com/ogier/pflag"
 
-	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
 	"golang.org/x/sys/unix"
 )
@@ -72,6 +71,7 @@ func init() {
 		"spooldir": {spooldir, "Set or print the spool directory."},
 		"help":     {help, "This help screen."},
 		"quant":    {quant, "Show some quantiles."},
+		"tee":      {tee, "Tee the output to stdout/stderr if spooling."},
 	}
 }
 
@@ -198,6 +198,17 @@ func spooldir(e Env, args []string) error {
 		e.c.SpoolDir = path
 	}
 	e.o.Out("SpoolDir: %s\n", e.c.SpoolDir)
+	return nil
+}
+
+func tee(e Env, args []string) error {
+	if e.c.Tee {
+		e.o.Out("Teeing is now OFF.\n")
+		e.c.Tee = false
+	} else {
+		e.o.Out("Teeing is now ON.\n")
+		e.c.Tee = true
+	}
 	return nil
 }
 
@@ -396,46 +407,30 @@ func summary(e Env, args []string) error {
 }
 
 func state(e Env, args []string) error {
-	type config struct {
-		Run  bool `short:"r" desc:"Show the state of in-flight commands"`
-		Conn bool `short:"c" desc:"Show the state of in-flight connections"`
-	}
-	cfg := &config{false, false}
-	f, err := reflectFlags("state", cfg, e.o)
-	if err != nil {
-		return err
-	}
-	if err := f.Parse(args); err != nil {
-		return err
-	}
 	wi := e.s.GetWaiterInfo()
-	if cfg.Conn || (!cfg.Conn && !cfg.Run) {
-		e.o.Out(
-			"%d connection threads (%.2fs average wait time)\n",
-			wi.connWaiters,
-			wi.avgConnWait.Seconds(),
-		)
-		connStateKeys := sortedIntKeys(wi.connStates)
-		for i := range connStateKeys {
-			state := connStateKeys[i]
-			count := wi.connStates[state]
+	e.o.Out(
+		"%d connection threads (%.2fs average wait time)\n",
+		wi.connWaiters,
+		wi.avgConnWait.Seconds(),
+	)
+	connStateKeys := sortedIntKeys(wi.connStates)
+	for i := range connStateKeys {
+		state := connStateKeys[i]
+		count := wi.connStates[state]
 
-			e.o.Out("\t%s(%d)\n", state, count)
-		}
+		e.o.Out("\t%s(%d)\n", state, count)
 	}
-	if cfg.Run || (!cfg.Conn && !cfg.Run) {
-		e.o.Out(
-			"%d run threads (%.2fs average wait time)\n",
-			wi.runWaiters,
-			wi.avgRunWait.Seconds(),
-		)
-		runStateKeys := sortedIntKeys(wi.runStates)
-		for i := range runStateKeys {
-			state := runStateKeys[i]
-			count := wi.runStates[state]
+	e.o.Out(
+		"%d run threads (%.2fs average wait time)\n",
+		wi.runWaiters,
+		wi.avgRunWait.Seconds(),
+	)
+	runStateKeys := sortedIntKeys(wi.runStates)
+	for i := range runStateKeys {
+		state := runStateKeys[i]
+		count := wi.runStates[state]
 
-			e.o.Out("\t%s(%d)\n", state, count)
-		}
+		e.o.Out("\t%s(%d)\n", state, count)
 	}
 	return nil
 }
@@ -497,7 +492,7 @@ func runCliCmd(e Env, cmd string, args []string) bool {
 	return true
 }
 
-func cli(channel ssh.Channel, e Env, useReadline bool) {
+func cli(channel io.ReadWriteCloser, e Env, useReadline bool) {
 	var t *terminal.Terminal
 	defer func() {
 		err := channel.Close()
