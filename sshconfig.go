@@ -10,6 +10,7 @@ package main
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"net"
 	"os"
@@ -126,7 +127,7 @@ func getPrivateKeyFile(keyname string, e Env) (*os.File, error) {
 	return fp, nil
 }
 
-func makeSigner(fp *os.File, e Env) (ssh.Signer, error) {
+func makeSigner(fp io.ReadCloser, e Env) (ssh.Signer, error) {
 	defer func() {
 		err := fp.Close()
 		if err != nil {
@@ -178,7 +179,7 @@ func getSSHConfigFile(fp *os.File, e Env) (*ssh.ClientConfig, error) {
 	return cfg, nil
 }
 
-func getSSHServerConfig(fp *os.File, e Env) (*ssh.ServerConfig, error) {
+func getSSHServerConfig(fp io.ReadCloser, e Env) (*ssh.ServerConfig, error) {
 	cfg := &ssh.ServerConfig{
 		NoClientAuth: true, // FIXME
 	}
