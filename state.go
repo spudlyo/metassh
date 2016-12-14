@@ -30,7 +30,6 @@ type HostInfo struct {
 	runOK       bool
 	runOnce     bool
 	lastError   error
-	cmdOutput   string
 }
 
 // ConnInfo is a struct that contains information about a connection that
