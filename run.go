@@ -66,31 +66,39 @@ func runCmd(me string, req runRequest, client *ssh.Client, e Env) {
 		return
 	}
 	go func(done chan<- runResponse, session *ssh.Session) {
-		var err error
 		if e.c.Spool {
-			var stdOutPipe, stdErrPipe io.Reader
+			var stdOutPipe, stdErrPipe, stdOutReader, stdErrReader io.Reader
 			stdOutPipe, err = session.StdoutPipe()
 			if err != nil {
 				e.o.Debug("StdoutPipe(): %s\n", err)
-			} else {
-				go func() {
-					_, err = io.Copy(fpStdOut, io.TeeReader(stdOutPipe, &stdOut))
-					if err != nil {
-						e.o.Debug("fpStdOut io.Copy: %s\n", err)
-					}
-				}()
+				done <- runResponse{err: err}
+				return
 			}
 			stdErrPipe, err = session.StderrPipe()
 			if err != nil {
 				e.o.Debug("StderrPipe(): %s\n", err)
-			} else {
-				go func() {
-					_, err = io.Copy(fpStdErr, io.TeeReader(stdErrPipe, &stdErr))
-					if err != nil {
-						e.o.Debug("fpStdErr io.Copy: %s\n", err)
-					}
-				}()
+				done <- runResponse{err: err}
+				return
 			}
+			if e.c.Tee {
+				stdOutReader = io.TeeReader(stdOutPipe, &stdOut)
+				stdErrReader = io.TeeReader(stdErrPipe, &stdErr)
+			} else {
+				stdOutReader = stdOutPipe
+				stdErrReader = stdErrPipe
+			}
+			go func() {
+				_, err = io.Copy(fpStdOut, stdOutReader)
+				if err != nil {
+					e.o.Debug("fpStdOut io.Copy: %s\n", err)
+				}
+			}()
+			go func() {
+				_, err = io.Copy(fpStdErr, stdErrReader)
+				if err != nil {
+					e.o.Debug("fpStdErr io.Copy: %s\n", err)
+				}
+			}()
 		} else {
 			session.Stdout = &stdOut
 			session.Stderr = &stdErr
