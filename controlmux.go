@@ -158,6 +158,10 @@ func (m *Mux) readMsg(conn *net.UnixConn) {
 		m.e.o.Debug("%s: Read() failed: %s\n", m.me, err)
 		return
 	}
+	if n != 4 {
+		m.e.o.Debug("Read %d bytes, expected 4.\n", n)
+		return
+	}
 	moreBytes := binary.BigEndian.Uint32(headerBuf)
 	buf := make([]byte, moreBytes)
 	n, err = conn.Read(buf)
@@ -367,24 +371,6 @@ func (m *Mux) handleControlMaster() {
 			kill.respChan <- true
 			return
 		}
-	}
-}
-
-func (m *Mux) mycopy(dest io.WriteCloser, src int) {
-	buf := make([]byte, 1024)
-	for {
-		n, err := syscall.Read(src, buf)
-		if err != nil {
-			m.e.o.Debug("Error on read: %s\n", err)
-			return
-		}
-		m.e.o.Debug("Read %d bytes, buf = %v\n", n, buf[:n])
-		n, err = dest.Write(buf[:n])
-		if err != nil {
-			m.e.o.Debug("Err on write: %s\n", err)
-			return
-		}
-		m.e.o.Debug("Wrote %d bytes.\n", n)
 	}
 }
 
