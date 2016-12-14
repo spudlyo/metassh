@@ -32,7 +32,7 @@ type SSHServer struct {
 }
 
 // NewSSHServer initializes the SSHServer state.
-func NewSSHServer(fp *os.File, e Env) (*SSHServer, error) {
+func NewSSHServer(fp io.ReadCloser, e Env) (*SSHServer, error) {
 	var err error
 	s := &SSHServer{
 		e: e,
@@ -181,8 +181,8 @@ func parseDims(b []byte) (uint32, uint32) {
 type winSize struct {
 	Height uint16
 	Width  uint16
-	x      uint16
-	y      uint16
+	x      uint16 // unused
+	y      uint16 // unused
 }
 
 func setWinSize(fd uintptr, w, h uint32) error {
