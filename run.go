@@ -24,48 +24,50 @@ import (
 // be used to run an arbritrary command. This is in practice only used by non
 // by bastion hosts though.
 func runCmd(me string, req runRequest, client *ssh.Client, e Env) {
-	var stdOut, stdErr bytes.Buffer
-	var fpStdOut, fpStdErr, fpRetCode *os.File
-	var exitCode uint32
-	var session *ssh.Session
-	var err error
 
 	timeoutChan := make(chan bool, 1)
 	runResp := make(chan runResponse)
 
-	if e.c.Spool {
-		fpStdOut, fpStdErr, fpRetCode, err = spoolHandles(e, e.s.GetPTR(me))
-		if err != nil {
-			e.o.Err("spoolHandles: %s\n", err)
-			e.o.Err("Spooling is turned OFF, correct and re-enable.\n")
-			e.c.Spool = false
-		} else {
-			defer func() {
-				err = fpStdOut.Close()
-				if err != nil {
-					e.o.Debug("fpStdOut.Close(): %s\n", err)
-				}
-				err = fpStdErr.Close()
-				if err != nil {
-					e.o.Debug("fpStdErr.Close(): %s\n", err)
-				}
-				err = fpRetCode.Close()
-				if err != nil {
-					e.o.Debug("fpRetCode.Close(): %s\n", err)
-				}
-			}()
-		}
-	}
 	rwi := &waitInfo{me, stateNewSession, time.Now(), timeoutChan}
 	e.s.SetRunWaitInfo(rwi)
 	defer e.s.DeleteRunWaitInfo(me)
 
-	session, err = client.NewSession()
-	if err != nil {
-		runResp <- runResponse{err: err}
-		return
-	}
-	go func(done chan<- runResponse, session *ssh.Session) {
+	go func(done chan<- runResponse) {
+		var stdOut, stdErr bytes.Buffer
+		var fpStdOut, fpStdErr, fpRetCode *os.File
+		var exitCode uint32
+		var session *ssh.Session
+		var err error
+
+		if e.c.Spool {
+			fpStdOut, fpStdErr, fpRetCode, err = spoolHandles(e, e.s.GetPTR(me))
+			if err != nil {
+				e.o.Err("spoolHandles: %s\n", err)
+				e.o.Err("Spooling is turned OFF, correct and re-enable.\n")
+				e.c.Spool = false
+			} else {
+				defer func() {
+					err = fpStdOut.Close()
+					if err != nil {
+						e.o.Debug("fpStdOut.Close(): %s\n", err)
+					}
+					err = fpStdErr.Close()
+					if err != nil {
+						e.o.Debug("fpStdErr.Close(): %s\n", err)
+					}
+					err = fpRetCode.Close()
+					if err != nil {
+						e.o.Debug("fpRetCode.Close(): %s\n", err)
+					}
+				}()
+			}
+		}
+		session, err = client.NewSession()
+		if err != nil {
+			runResp <- runResponse{err: err}
+			return
+		}
+
 		if e.c.Spool {
 			var stdOutPipe, stdErrPipe, stdOutReader, stdErrReader io.Reader
 			stdOutPipe, err = session.StdoutPipe()
@@ -88,15 +90,15 @@ func runCmd(me string, req runRequest, client *ssh.Client, e Env) {
 				stdErrReader = stdErrPipe
 			}
 			go func() {
-				_, err = io.Copy(fpStdOut, stdOutReader)
-				if err != nil {
-					e.o.Debug("fpStdOut io.Copy: %s\n", err)
+				_, cpErr := io.Copy(fpStdOut, stdOutReader)
+				if cpErr != nil {
+					e.o.Debug("fpStdOut io.Copy: %s\n", cpErr)
 				}
 			}()
 			go func() {
-				_, err = io.Copy(fpStdErr, stdErrReader)
-				if err != nil {
-					e.o.Debug("fpStdErr io.Copy: %s\n", err)
+				_, cpErr := io.Copy(fpStdErr, stdErrReader)
+				if cpErr != nil {
+					e.o.Debug("fpStdErr io.Copy: %s\n", cpErr)
 				}
 			}()
 		} else {
@@ -131,7 +133,7 @@ func runCmd(me string, req runRequest, client *ssh.Client, e Env) {
 			err:      err,
 			exitCode: int(exitCode),
 		}
-	}(runResp, session)
+	}(runResp)
 	go sleep(timeoutChan, req.timeout)
 
 	select {
@@ -146,20 +148,11 @@ func runCmd(me string, req runRequest, client *ssh.Client, e Env) {
 		} else {
 			retErr = errors.New("Remote run aborted.")
 		}
-		// At this point we need to do something to terminate the running
-		// program.
-		//
-		// session.Signal() seems promising, but is not actually implemented
-		// in OpenSSH.
-		//
-		err = session.Close() // Does not actually terminate the program.
-		if err != nil {
-			e.o.Debug("%s: session.Close(): %s\n", me, err)
-		}
+		// At this point it would be nice to terminate the running program.
+		// session.Signal() would be great for this, but it's not actually
+		// implemented in OpenSSH.
 		req.response <- runResponse{
-			stdOut: stdOut.String(),
-			stdErr: stdErr.String(),
-			err:    retErr,
+			err: retErr,
 		}
 		go func() {
 			resp := <-runResp
