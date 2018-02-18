@@ -120,6 +120,7 @@ func main() {
 	if err != nil {
 		e.o.ErrExit("Can't load SSH client config: %s\n", err)
 	}
+	sshClientConfig.HostKeyCallback = ssh.InsecureIgnoreHostKey()
 	e.s.SetSSHConfig(sshClientConfig)
 	count := 0
 	if e.c.File != "" {
