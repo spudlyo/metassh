@@ -15,6 +15,7 @@ import (
 func connectEverywhere(e Env, timeout int) int {
 	var wg sync.WaitGroup
 
+	e.o.Debug("Connecting everywhere.\n")
 	if err := resolveProxies(e); err != nil {
 		e.o.ErrExit("proxy resolve failed: %s\n", err)
 	}

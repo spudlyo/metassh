@@ -61,6 +61,8 @@ func remoteHost(me string, id int, listen <-chan interface{}, e Env, client *ssh
 	if host := e.s.GetPTR(me); host != "" {
 		me = host
 	}
+	e.o.Debug("remoteHost(): running for %s\n", me)
+
 	// We keep a session around just for keep-alives.
 	session, err := client.NewSession()
 	if err != nil {

@@ -28,9 +28,11 @@ import (
 // in chain slice it will proxy through as many hosts as necessary to get to
 // the final destination, which is the last element in the slice.
 func resolve(chain []string, e Env, isProxy bool, timeout int) error {
+	e.o.Debug("resolve() chain: %v, isProxy: %v, timeout: %v\n", chain, isProxy, timeout)
 	for idx, link := range chain {
 		proxy := idx - 1
 		if proxy >= 0 {
+			e.o.Debug("resolve(): Using a proxy.\n")
 			// This machine has a proxy
 			proxyhost := chain[proxy]
 			// We're outta here if we've already done this one.
@@ -61,7 +63,9 @@ func resolve(chain []string, e Env, isProxy bool, timeout int) error {
 			})
 		} else {
 			// This is a direct connect.
+			e.o.Debug("resolve(): Direct connect to: %s\n", link)
 			if e.s.ConnExists(link) {
+				e.o.Debug("resolve(): %s connection already exists.\n", link)
 				continue
 			}
 			reqChan := make(chan interface{})
@@ -100,7 +104,8 @@ func resolve(chain []string, e Env, isProxy bool, timeout int) error {
 							isDirect: true,
 						})
 						go func() { <-timeoutChan }()
-					case <-errChan:
+					case dcErr := <-errChan:
+						e.o.Debug("resolve(): Err: %s from directConnect\n", dcErr)
 						go func() { <-timeoutChan }()
 						return
 					case <-timeoutChan:
@@ -153,7 +158,7 @@ func sleep(done chan<- bool, timeout int) {
 // all realize they need to connect the proxy at once.
 func resolveProxies(e Env) error {
 	chainMap := make(map[string]int)
-
+	e.o.Debug("Inside resolveProxies()\n")
 	hk := e.s.GetHostKeys()
 	for j := range hk {
 		hostname := hk[j]
@@ -166,6 +171,7 @@ func resolveProxies(e Env) error {
 			// direct connect
 			continue
 		}
+		e.o.Debug("resolveProxies(): host: %s, chain: %v, length: %d\n", hostname, hi.chain, length)
 		chain := strings.Join(hi.chain[:length-1], " ")
 		if val, exists := chainMap[chain]; exists {
 			chainMap[chain] = val + 1
