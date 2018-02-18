@@ -20,7 +20,7 @@ import (
 
 // Default option values.
 const (
-	BastionConnects   = 2               // Split the proxy load up a bit
+	BastionConnects   = 1               // Split the proxy load up a bit
 	Concurrency       = 65536           // SSH to this many boxes per iteration
 	ControlPath       = "/.ssh/control" // Location of the control master sockets
 	DefaultSSHKey     = "/.ssh/id_rsa"  // Default private key location
