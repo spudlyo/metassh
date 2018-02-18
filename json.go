@@ -32,9 +32,8 @@ type JSON struct {
 // Server is a type that contains a minimal info about a host. The
 // structure tags make the JSON import easier.
 type Server struct {
-	Name   string `json:"name"`
-	IPAddr string `json:"ip_address"`
-	Chain  string `json:"chain"`
+	Name  string `json:"name"`
+	Chain string `json:"chain"`
 }
 
 // LoadFile is a method that loads data from the JSON SSH dump file
@@ -62,9 +61,8 @@ func (j *JSON) LoadBlob(jblob []byte) (int, error) {
 			continue
 		}
 		j.e.s.SetHostInfo(HostInfo{
-			hostName:  srv.Name,
-			ipAddress: srv.IPAddr,
-			chain:     strings.Split(srv.Chain, " "),
+			hostName: srv.Name,
+			chain:    strings.Split(srv.Chain, " "),
 		})
 		count++
 	}
