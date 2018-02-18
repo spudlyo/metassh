@@ -131,8 +131,8 @@ func resolve(chain []string, e Env, isProxy bool, timeout int) error {
 // The directConnect function will connect you directly to a host, not through
 // a proxy. Used when setting up proxies initially.
 func directConnect(link string, done chan<- *ssh.Client, echan chan<- error, cfg *ssh.ClientConfig) {
-	dest := link + ":" + SSHPort
-	client, err := ssh.Dial("tcp", dest, cfg)
+	// dest := link + ":" + SSHPort
+	client, err := ssh.Dial("tcp", link, cfg)
 	if err != nil {
 		echan <- err
 		return
